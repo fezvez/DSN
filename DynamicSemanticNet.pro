@@ -36,8 +36,8 @@ SOURCES += main.cpp\
     PropNet/propositionor.cpp \
     PropNet/propositionnot.cpp \
     PropNet/propositionconstant.cpp \
-    GDL/gdl_nextsentence.cpp \
-    PropNet/propositiondatabase.cpp
+    PropNet/propositiondatabase.cpp \
+    GDL/gdl_rulehead.cpp
 
 HEADERS  += widget.h \
     fileloader.h \
@@ -64,7 +64,7 @@ HEADERS  += widget.h \
     PropNet/propositionnot.h \
     PropNet/propositionconstant.h \
     GDL/gdl_tools.h \
-    GDL/gdl_nextsentence.h \
-    PropNet/propositiondatabase.h
+    PropNet/propositiondatabase.h \
+    GDL/gdl_rulehead.h
 
 FORMS    += widget.ui

@@ -10,12 +10,12 @@ bool GDL_Variable::isGround() const{
     return false;
 }
 
-QString GDL_Variable::buildNameRecursively(){
+QString GDL_Variable::buildNameRecursively() const{
     return recursiveName;
 }
 
 bool GDL_Variable::operator==(const GDL_Term & t){
-    return false;
+    return name == t.getName();
 }
 
 void GDL_Variable::assignRecursiveName(QString s){

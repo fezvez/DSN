@@ -19,44 +19,19 @@ bool GDL_FunctionalTerm::isGround() const{
 }
 
 void GDL_FunctionalTerm::buildName(){
-    name = head->toString();
-    switch(body.size()){
-    case 0:
-        qDebug() << "Function with arity 0 : " << name;
-        return;
-    case 1:
-        name = QString('(') + name + ' ' + body[0]->toString() + ')';
-        return;
-    default:
-        break;
-    }
-
-    name = QString('(') + name + " (" + body[0]->toString();
-    for(int i=1; i<body.size(); ++i){
+    name = QString('(') + head->getName();
+    for(int i=0; i<body.size(); ++i){
         name = name + " " + body[i]->toString();
     }
-    name = name + "))";
+    name = name + ")";
 }
 
-QString GDL_FunctionalTerm::buildNameRecursively(){
-
-    QString answer = head->buildNameRecursively();
-    switch(body.size()){
-    case 0:
-        qDebug() << "Function with arity 0 : " << answer;
-        return answer;
-    case 1:
-        answer = QString('(') + answer + ' ' + body[0]->buildNameRecursively() + ')';
-        return answer;
-    default:
-        break;
-    }
-
-    answer = QString('(') + answer + " (" + body[0]->buildNameRecursively();
-    for(int i=1; i<body.size(); ++i){
+QString GDL_FunctionalTerm::buildNameRecursively() const{
+    QString answer = QString('(') + head->buildNameRecursively() ;
+    for(int i=0; i<body.size(); ++i){
         answer = answer + " " + body[i]->buildNameRecursively();
     }
-    answer = answer + "))";
+    answer = answer + ")";
 
     return answer;
 }

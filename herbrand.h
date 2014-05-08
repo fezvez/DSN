@@ -9,7 +9,8 @@
 #include "GDL/gdl_rule.h"
 #include "GDL/gdl_functionalterm.h"
 #include "GDL/gdl_notsentence.h"
-#include "GDL/gdl_nextsentence.h"
+#include "GDL/gdl_orsentence.h"
+#include "GDL/gdl_rulehead.h"
 
 #include <QStringList>
 #include <QObject>
@@ -64,6 +65,7 @@ public slots:
 protected:
     void cleanFile();
     void generateHerbrand();
+    void generateSkolemRules();
     void generateStratum();
     void generateInformation();
 
@@ -74,8 +76,9 @@ signals:
 private:
     void processKifLine(QString line);
     PRule processRule(QString line);
+    PRuleHead processRuleHead(QString line, GDL::GDL_TYPE type = GDL::NONE);
     PSentence processSentence(QString line);
-    PRelation processRelation(QString line, bool isHead = false, GDL::GDL_TYPE type = GDL::NONE);
+    PRelation processRelation(QString line, GDL::GDL_TYPE type = GDL::NONE);
     PTerm processTerm(QString line);
     PFunction processFunction(QString line);
 
@@ -101,7 +104,14 @@ protected:
     QSet<PConstant> objectConstantSet;
     QSet<PConstant> functionConstantSet;
     QSet<PConstant> relationConstantSet;
+    QSet<PVariable> variableSet;
 
+    QMap<PConstant, int> functionArity;
+    QMap<PConstant, int> relationArity;
+
+    QMap<PConstant, QVector<PRule>> nextRulesMap;
+    QMap<PConstant, QVector<PRule>> baseRulesMap;
+    //QMap<PConstant, QVector<PRelation>> baseRelations;
 
     QMap<GDL::GDL_TYPE, QVector<PRelation>> mapTypeToRelationContainer;
     QMap<GDL::GDL_TYPE, QVector<PRule>> mapTypeToRuleContainer;

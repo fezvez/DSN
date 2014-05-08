@@ -34,10 +34,19 @@ public:
 public:
     virtual QString toString() const;
     virtual bool isGround() const = 0;
-    virtual QString buildNameRecursively() = 0;
+    virtual QString buildNameRecursively() const = 0;
+
+    QString getName() const;
 
     virtual ~GDL();
 
+protected:
+    QString name;
+
+
+
+
+    // Static methods and attributes
 public:
     static void init(){
         mapString2GDLType.clear();
@@ -92,8 +101,7 @@ public:
     static QMap<GDL_TYPE, QString> mapGDLType2String;
     static bool useSkolemNames;
 
-protected:
-    QString name;
+
 };
 
 

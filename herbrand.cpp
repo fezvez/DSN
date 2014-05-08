@@ -23,8 +23,9 @@ void Herbrand::loadKif(const QStringList & sl){
 
     cleanFile();
     generateHerbrand();
+    generateSkolemRules();
     generateStratum();
-    //generateInformation();
+    generateInformation();
 }
 
 
@@ -86,6 +87,44 @@ void Herbrand::generateHerbrand(){
     emit output(QString("Herbrand generated"));
 }
 
+void Herbrand::generateSkolemRules(){
+    qDebug() << "\n\nGENERATE SKOLEM RULES";
+    for(PConstant originalHead : skolemMap.keys()){
+        qDebug() << "Original Head : " << originalHead->toString();
+
+
+        Q_ASSERT(relationArity.contains(originalHead));
+
+        QVector<PTerm> body;
+        GDL::GDL_TYPE type;
+
+        for(PRule rule : ruleList){
+            PRuleHead ruleHead = rule->getHead();
+            if(ruleHead->getHead() == originalHead){
+                body = ruleHead->getBody();
+                type = ruleHead->getType();
+                break;
+            }
+        }
+
+        PRuleHead skolemRuleHead = PRuleHead(new GDL_RuleHead(originalHead, body, type, originalHead));
+        QVector<PSentence> skolemBody;
+
+        for(PConstant skolemizedNames : skolemMap[originalHead]){
+            PSentence sentence = PSentence(new GDL_RelationalSentence(skolemizedNames, body, type));
+            skolemBody.append(sentence);
+        }
+
+        PSentence orSentence = PSentence(new GDL_OrSentence(skolemBody));
+        QVector<PSentence> skolemRuleBody;
+        skolemRuleBody.append(orSentence);
+        PRule skolemRule = PRule(new GDL_Rule(skolemRuleHead, skolemRuleBody));
+        ruleList.append(skolemRule);
+
+        qDebug() << "Skolem rule : " << skolemRule->toString();
+    }
+}
+
 void Herbrand::generateStratum(){
     qDebug() << "\n\nGENERATE STRATUM";
     for(PRelation relation : relationList){
@@ -124,6 +163,11 @@ void Herbrand::generateStratum(){
             }
             stratum->addDependencyNegative(stratumMap[dn]);
         }
+    }
+
+    GDL::setSkolemNames(false);
+    for(PRule rule : ruleList){
+        qDebug() << "Rule : " << rule->toString();
     }
 
     /**
@@ -324,14 +368,18 @@ PRule Herbrand::processRule(QString line){
 
     Q_ASSERT(splitLine[0] == QString("<="));
 
-    PRelation head = processRelation(splitLine[1], true);
+    PRuleHead head = processRuleHead(splitLine[1]);
     QVector<PSentence> body;
 
     for(int i = 2; i<splitLine.size(); ++i){
         body.append(processSentence(splitLine[i]));
     }
 
-    return PRule(new GDL_Rule(head, body));
+    PRule answer = PRule(new GDL_Rule(head, body));
+
+    qDebug() << "Rule processed : " << answer->toString();
+
+    return answer;
 }
 
 PSentence Herbrand::processSentence(QString line){
@@ -355,6 +403,15 @@ PSentence Herbrand::processSentence(QString line){
         PNotSentence notSentence = PNotSentence(new GDL_NotSentence(subSentence));
         answer = qSharedPointerCast<GDL_Sentence>(notSentence);
     }
+    else if(splitLine[0] == QString("or")){
+        qDebug() << "Sentence is OR sentence";
+        QVector<PSentence> vecSentence;
+        for(int i=1; i<splitLine.size(); ++i){
+            vecSentence.append(processRelation(splitLine[i]));
+        }
+        POrSentence orSentence = POrSentence(new GDL_OrSentence(vecSentence));
+        answer = qSharedPointerCast<GDL_Sentence>(orSentence);
+    }
     else{
         qDebug() << "Sentence is relational sentence";
         answer = qSharedPointerCast<GDL_Sentence>(processRelation(line));
@@ -363,7 +420,102 @@ PSentence Herbrand::processSentence(QString line){
     return answer;
 }
 
-PRelation Herbrand::processRelation(QString line, bool isHead, GDL::GDL_TYPE type){
+PRuleHead Herbrand::processRuleHead(QString line, GDL::GDL_TYPE type){
+    qDebug() << "Rule head (Relational sentence) " << line;
+
+    PRuleHead answer;
+    QStringList splitLine = split(line);
+
+
+    GDL::GDL_TYPE subtype = GDL::getGDLTypeFromString(splitLine[0]);
+    qDebug() << "Subtype is : " << GDL::getStringFromGDLType(subtype);
+
+    if(splitLine[0] == QString("base")
+            || splitLine[0] == QString("next")){
+        Q_ASSERT(splitLine.size() == 2);
+        PRuleHead relation = processRuleHead(splitLine[1], subtype);
+        return relation;
+    }
+
+    if(splitLine[0] == QString("init")
+            || splitLine[0] == QString("true")){
+        qDebug() << "There should be no init or true in the rule head";
+        Q_ASSERT(false);
+    }
+
+    QString headString = splitLine[0];
+    switch(type){
+    case GDL::NEXT:
+        headString = QString("next_").append(headString);
+        break;
+    default:
+        break;
+    }
+    if(!constantMap.contains(headString)){
+        constantMap.insert(headString, PConstant(new GDL_Constant(headString)));
+        relationConstantSet.insert(constantMap[headString]);
+    }
+    PConstant headConstant = constantMap[headString];
+    qDebug() << "Head constant " << headConstant->toString();
+    if(!skolemMap.contains(headConstant)){
+        skolemMap[headConstant] = QVector<PConstant>();
+    }
+    int index = skolemMap[headConstant].size();
+    QString skolemString = headString + "_SK_" + QString::number(index);
+    qDebug() << "skolemString  " << skolemString;
+    PConstant skolemHeadConstant = PConstant(new GDL_Constant(skolemString));
+    skolemMap[headConstant].push_back(skolemHeadConstant);
+    qDebug() << "Skolem string : " << skolemHeadConstant->toString();
+
+
+
+    constantMap.insert(skolemString, skolemHeadConstant);
+    relationConstantSet.insert(skolemHeadConstant);
+
+
+    QVector<PTerm> body;
+
+    // All this section can be entirely commented
+    // Redundant with the next else
+    if(splitLine[0] == QString("input")
+            || splitLine[0] == QString("legal")
+            || splitLine[0] == QString("does")) {
+        Q_ASSERT(splitLine.size() == 3);
+        body.append(processTerm(splitLine[1]));
+        body.append(processTerm(splitLine[2]));
+    }
+    else {
+        for(int i = 1; i<splitLine.size(); ++i){
+            body.append(processTerm(splitLine[i]));
+        }
+    }
+
+
+
+    relationArity[skolemHeadConstant] = body.size();
+    if(!relationArity.contains(headConstant)){
+        relationArity.insert(headConstant, body.size());
+    }
+    if(relationArity[headConstant] != body.size()){
+        qDebug() << "Relation constant has not consistent arity";
+        qDebug() << "In memory : " << relationArity[headConstant] << "\tFor this relation : " << body.size();
+        Q_ASSERT(false);
+    }
+
+
+    if(type == GDL::NONE){
+        answer = PRuleHead(new GDL_RuleHead(headConstant, body, subtype, skolemHeadConstant));
+    }
+    else{
+        answer = PRuleHead(new GDL_RuleHead(headConstant, body, type, skolemHeadConstant));
+    }
+
+    qDebug() << "Rule Head processed";
+
+    return answer;
+}
+
+PRelation Herbrand::processRelation(QString line, GDL::GDL_TYPE type){
     qDebug() << "Relational sentence " << line;
 
     PRelation answer;
@@ -388,7 +540,7 @@ PRelation Herbrand::processRelation(QString line, bool isHead, GDL::GDL_TYPE typ
             || splitLine[0] == QString("init")
             || splitLine[0] == QString("true")){
         Q_ASSERT(splitLine.size() == 2);
-        PRelation relation = processRelation(splitLine[1], isHead, subtype);
+        PRelation relation = processRelation(splitLine[1], subtype);
         return relation;
     }
     // All this section can be commented
@@ -405,33 +557,14 @@ PRelation Herbrand::processRelation(QString line, bool isHead, GDL::GDL_TYPE typ
         }
     }
 
-    PConstant skolemHead;
-    if(isHead){
-        QString skolemString = head->toString();
-
-
-        if(!skolemMap.contains(head)){
-            skolemMap.insert(head, QVector<PConstant>());
-        }
-        int index = skolemMap[head].size();
-
-        skolemString = skolemString + "_SK_" + QString::number(index);
-
-        if(type == GDL::NEXT){
-            skolemString = QString("next_") + skolemString;
-        }
-
-        skolemHead = PConstant(new GDL_Constant(skolemString));
-
-        qDebug() << "Skolem string : " << skolemHead->toString();
-    }
-
     if(type == GDL::NONE){
-        answer = PRelation(new GDL_RelationalSentence(head, body, subtype, skolemHead));
+        answer = PRelation(new GDL_RelationalSentence(head, body, subtype));
     }
     else{
-        answer = PRelation(new GDL_RelationalSentence(head, body, type, skolemHead));
+        answer = PRelation(new GDL_RelationalSentence(head, body, type));
     }
+
+    qDebug() << "Relation processed";
 
     return answer;
 }
@@ -443,7 +576,12 @@ PTerm Herbrand::processTerm(QString line){
     if(splitLine.size() == 1){
         if(splitLine[0][0] == QChar('?')){
             qDebug() << "Variable " << splitLine[0];
-            return PTerm(new GDL_Variable(splitLine[0]));
+            PVariable answer = PVariable(new GDL_Variable(splitLine[0]));
+            if(!variableSet.contains(answer)){
+                variableSet << answer;
+            }
+
+            return qSharedPointerCast<GDL_Term>(answer);
         }
         else{
             qDebug() << "Constant " << splitLine[0];
@@ -452,14 +590,14 @@ PTerm Herbrand::processTerm(QString line){
             if(!constantMap.contains(objectConstant)){
                 constantMap.insert(objectConstant, constant);
                 objectConstantSet.insert(constant);
-                constant = constantMap[objectConstant];
             }
+            constant = constantMap[objectConstant];
             return qSharedPointerCast<GDL_Term>(constant);
         }
     }
     else{
         qDebug() << "WE HAVE A FUNCTIONAL TERM";
-        return processFunction(line);
+        return qSharedPointerCast<GDL_Term>(processFunction(line));
     }
 }
 
@@ -481,6 +619,16 @@ PFunction Herbrand::processFunction(QString line){
     for(int i = 1; i<splitLine.size(); ++i){
         PTerm term = processTerm(splitLine[i]);
         body.append(term);
+    }
+
+
+    if(!functionArity.contains(function)){
+        functionArity.insert(function, body.size());
+    }
+    if(functionArity[function] != body.size()){
+        qDebug() << "Function constant has not consistent arity";
+        qDebug() << "In memory : " << functionArity[function] << "\tFor this relation : " << body.size();
+        Q_ASSERT(false);
     }
 
     answer = PFunction(new GDL_FunctionalTerm(function, body));

@@ -13,7 +13,7 @@ public:
     GDL_Constant(const GDL_Constant & constant);
 
     bool isGround() const;
-    QString buildNameRecursively();
+    QString buildNameRecursively() const;
     bool operator==(const GDL_Term & t);
 };
 

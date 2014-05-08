@@ -14,7 +14,7 @@ bool GDL_Constant::isGround() const{
     return true;
 }
 
-QString GDL_Constant::buildNameRecursively(){
+QString GDL_Constant::buildNameRecursively() const{
     return name;
 }
 

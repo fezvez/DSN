@@ -2,23 +2,15 @@
 
 #include <QDebug>
 
-GDL_RelationalSentence::GDL_RelationalSentence(PConstant h, QVector<PTerm> b, GDL_TYPE t, PConstant skolemH):
+GDL_RelationalSentence::GDL_RelationalSentence(PConstant h, QVector<PTerm> b, GDL_TYPE t):
     head(h),
     body(b),
-    type(t),
-    skolemHead(skolemH)
+    type(t)
 {
     buildName();
-    buildSkolemName();
     dependentConstants.insert(h);
 }
 
-QString GDL_RelationalSentence::toString() const{
-    if(useSkolemNames){
-        return skolemName;
-    }
-    return name;
-}
 
 bool GDL_RelationalSentence::isGround() const{
     for(PTerm term : body)
@@ -30,31 +22,15 @@ bool GDL_RelationalSentence::isGround() const{
     return true;
 }
 
+
 void GDL_RelationalSentence::buildName(){
-    name = getHead()->toString();
-    switch(body.size()){
-    case 0:
-        qDebug() << "Relation with arity 0 : " << name;
-        break;
-    case 1:
-        name = QString('(') + name + ' ' + body[0]->toString() + ')';
-        break;
-    default:
-        name = QString('(') + name + " (" + body[0]->toString();
-        for(int i=1; i<body.size(); ++i){
-            name = name + " " + body[i]->toString();
-        }
-        name = name + "))";
-        break;
-    }
 
+    name = QString('(') + getHead()->toString();
+    for(int i=0; i<body.size(); ++i){
+        name = name + " " + body[i]->toString();
+    }
+    name = name + ")";
 
-    if(type==GDL::NEXT){
-        name = QString("next ") + name;
-    }
-    if(type==GDL::BASE){
-        name = QString("base ") + name;
-    }
     if(type==GDL::TRUE){
         name = QString("true ") + name;
     }
@@ -63,32 +39,9 @@ void GDL_RelationalSentence::buildName(){
     }
 }
 
-void GDL_RelationalSentence::buildSkolemName(){
-    if(skolemHead.isNull()){
-        skolemName = head->toString();
-    }
-    else{
-        skolemName = skolemHead->toString();
-    }
 
-    switch(body.size()){
-    case 0:
-        qDebug() << "Relation with arity 0 : " << skolemName;
-        break;
-    case 1:
-        skolemName = QString('(') + skolemName + ' ' + body[0]->toString() + ')';
-        break;
-    default:
-        skolemName = QString('(') + skolemName + " (" + body[0]->toString();
-        for(int i=1; i<body.size(); ++i){
-            skolemName = skolemName + " " + body[i]->toString();
-        }
-        skolemName = skolemName + "))";
-        break;
-    }
-}
 
-QString GDL_RelationalSentence::buildNameRecursively(){
+QString GDL_RelationalSentence::buildNameRecursively() const{
     QString answer = getHead()->buildNameRecursively();
     switch(body.size()){
     case 0:
@@ -108,15 +61,19 @@ QString GDL_RelationalSentence::buildNameRecursively(){
     return answer;
 }
 
-PConstant GDL_RelationalSentence::getRelationConstant(){
+PConstant GDL_RelationalSentence::getRelationConstant() const{
     return head;
 }
 
-PConstant GDL_RelationalSentence::getHead(){
+PConstant GDL_RelationalSentence::getHead() const{
     return getRelationConstant();
 }
+QVector<PTerm> GDL_RelationalSentence::getBody() const{
+    return body;
+}
 
-GDL::GDL_TYPE GDL_RelationalSentence::getType(){
+
+GDL::GDL_TYPE GDL_RelationalSentence::getType() const{
     return type;
 }
 

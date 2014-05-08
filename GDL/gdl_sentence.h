@@ -11,7 +11,7 @@ class GDL_Sentence : public GDL
 {
 public:
     bool isGround() const = 0;
-    QString buildNameRecursively() = 0;
+    QString buildNameRecursively() const = 0;
 
     QSet<PConstant> getDependentConstants();
     QSet<PConstant> getDependentConstantsNegative();

@@ -12,7 +12,7 @@ public:
     GDL_Variable(const QString & s);
 
     bool isGround() const;
-    QString buildNameRecursively();
+    QString buildNameRecursively() const;
 
     bool operator==(const GDL_Term & t);
 

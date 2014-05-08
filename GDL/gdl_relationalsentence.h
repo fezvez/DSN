@@ -13,28 +13,27 @@ typedef QSharedPointer<GDL_RelationalSentence> PRelation;
 class GDL_RelationalSentence : public GDL_Sentence
 {
 public:
-    GDL_RelationalSentence(PConstant h, QVector<PTerm> b, GDL::GDL_TYPE t, PConstant skolemH = PConstant());
+    GDL_RelationalSentence(PConstant h, QVector<PTerm> b, GDL::GDL_TYPE t);
 
-    QString toString() const;
     bool isGround() const;
-    QString buildNameRecursively();
+    QString buildNameRecursively() const;
 
-    virtual PConstant getRelationConstant();
-    virtual PConstant getHead();
-    GDL::GDL_TYPE getType();
+    PConstant getRelationConstant() const;
+    PConstant getHead() const;
+    QVector<PTerm> getBody() const;
+    GDL::GDL_TYPE getType() const;
+
+
 
 
 private:
     void buildName();
-    void buildSkolemName();
+
 
 protected:
     PConstant head;
     QVector<PTerm> body;
     GDL::GDL_TYPE type;
-
-    QString skolemName;
-    PConstant skolemHead;
 };
 
 #endif // GDL_RELATIONALSENTENCE_H
